@@ -232,7 +232,7 @@ jobs:
           retention-days: 30
 
   e2e:
-    name: stack completo (compose + smoke test)
+    name: stack completo (compose, smoke test y restore)
     needs: [images]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -257,6 +257,10 @@ jobs:
 
       - name: smoke test
         run: ./scripts/smoke-test.sh
+
+      # Respaldo, borrado del volumen y restauración: prueba que los respaldos sirven en cada cambio.
+      - name: simulacro de respaldo y restauracion
+        run: ./scripts/restore-drill.sh --yes
 
       - name: logs si algo falló
         if: failure()
