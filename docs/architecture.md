@@ -110,8 +110,9 @@ Detalle en `docs/ci-cd.md`.
 
 | Decisión | Alternativa descartada | Por qué |
 | --- | --- | --- |
-| Runtime del backend: Liberica JRE 17 sobre Alpaquita (musl) | `eclipse-temurin:17-jre-alpine` | La de Temurin alpine solo existe para amd64; quien evalúe en una Mac con Apple Silicon tendría que emular. Liberica es multi arquitectura, pesa ~44 MB y es la JVM que usan los buildpacks oficiales de Spring Boot. |
-| Healthcheck con `wget` de busybox | curl instalado | Un paquete menos y sin gestor de paquetes en runtime. |
+| Runtime del backend: Temurin JRE 17 sobre Ubuntu 24.04 LTS | `eclipse-temurin:17-jre-alpine`, Liberica JRE sobre Alpaquita | La de Temurin alpine solo existe para amd64; quien evalúe en una Mac con Apple Silicon tendría que emular. Liberica es multi arquitectura y mucho más chica (la usé primero), pero Trivy no reconoce su sistema operativo y el gate no habría visto los paquetes del SO. Noble es multi arquitectura, mismo proveedor que el build y sale sin HIGH/CRITICAL. Preferí poder escanearla a ahorrar megas. |
+| Jar separado en capas de Spring Boot | Copiar el jar completo | Dependencias y aplicación van en capas distintas: cada deploy mueve ~250 kB en vez de 53 MB y el build reutiliza caché. |
+| Healthcheck con `wget` que ya trae la imagen | curl | Se quita curl de las dos imágenes y no se instala nada extra. |
 | nginx resuelve el backend en cada petición (`resolver` + variable) | `proxy_pass http://backend:8080` fijo | Con el fijo, nginx guarda la IP al arrancar: si el backend se reinicia y cambia de IP hay 502 hasta reiniciar nginx, y nginx ni siquiera arranca si el backend no existe todavía. |
 | Compose con valores por defecto de solo local | Variables obligatorias (`:?`) | La guía de evaluación corre `docker compose up` sin crear `.env`. La base no publica puertos, así que el valor por defecto no es alcanzable desde fuera. |
 | Trivy desde su imagen, fijada por digest | `aquasecurity/trivy-action` | Misma herramienta en local y CI, una action de terceros menos. |
