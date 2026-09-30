@@ -1,56 +1,120 @@
+# Stack local: PostgreSQL + API Spring Boot + SPA Angular en nginx.
+# Funciona sin .env (valores por defecto solo para desarrollo local). Para cambiarlos: cp .env.example .env
+
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
   database:
-    image: postgres:16-alpine
+    <<: *hardening
+    image: postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    # UID del usuario postgres en la imagen alpine. Así no hace falta root ni capabilities para chown.
+    user: "70:70"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-parking}
       POSTGRES_USER: ${POSTGRES_USER:-parking}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-parking_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local_only}
     volumes:
-      - parking_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    tmpfs:
+      - /var/run/postgresql:mode=1777
+      - /tmp:mode=1777
+    networks: [data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 3s
       retries: 12
-    restart: unless-stopped
+      start_period: 10s
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   backend:
+    <<: *hardening
     build:
       context: ./backend
+      args:
+        VERSION: ${IMAGE_TAG:-local}
+    image: neology/parking-backend:${IMAGE_TAG:-local}
     environment:
       SPRING_PROFILES_ACTIVE: postgres
       DB_URL: jdbc:postgresql://database:5432/${POSTGRES_DB:-parking}
       DB_USERNAME: ${POSTGRES_USER:-parking}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-parking_dev_password}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local_only}
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-4200}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
+    tmpfs:
+      - /tmp:mode=1777
+    networks: [edge, data]
     depends_on:
       database:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/actuator/health/readiness"]
       interval: 5s
       timeout: 3s
       retries: 18
-      start_period: 20s
-    restart: unless-stopped
+      start_period: 30s
+    # server.shutdown=graceful espera hasta 20s a que terminen las peticiones en curso.
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
 
   frontend:
+    <<: *hardening
     build:
       context: ./frontend
+      args:
+        VERSION: ${IMAGE_TAG:-local}
+    image: neology/parking-frontend:${IMAGE_TAG:-local}
+    environment:
+      BACKEND_UPSTREAM: backend:8080
     ports:
       - "${FRONTEND_PORT:-4200}:8080"
+    tmpfs:
+      - /tmp:mode=1777
+      - /var/cache/nginx:mode=1777
+      - /etc/nginx/conf.d:mode=1777
+    networks: [edge]
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
       interval: 10s
       timeout: 3s
       retries: 6
-    restart: unless-stopped
+      start_period: 5s
+    stop_grace_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+
+networks:
+  # edge: tráfico desde el host hacia frontend y backend.
+  edge: {}
+  # data: red interna sin salida, solo backend y base de datos. PostgreSQL no publica puertos.
+  data:
+    internal: true
 
 volumes:
-  parking_postgres_data:
-
+  postgres_data:
