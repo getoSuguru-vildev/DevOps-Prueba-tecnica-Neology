@@ -1,12 +1,25 @@
+# Perfil de contenedores y AWS. Sin valores por defecto para credenciales:
+# si falta DB_URL, DB_USERNAME o DB_PASSWORD la conexión falla y la aplicación termina al arrancar,
+# en lugar de conectarse con una contraseña conocida.
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/parking}
-    username: ${DB_USERNAME:parking}
-    password: ${DB_PASSWORD:parking_dev_password}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Tope de conexiones por instancia. Tareas máximas x este valor debe quedar debajo de max_connections
+      # de PostgreSQL (Terraform lo valida).
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: 2
+      # Si no hay conexión libre en 5s se falla rápido en lugar de encolar peticiones.
+      connection-timeout: 5000
+      # Menor que los timeouts de red/RDS para no reutilizar conexiones muertas.
+      max-lifetime: 1500000
+      # Avisa en el log si una conexión se queda prestada más de 30s (posible fuga).
+      leak-detection-threshold: 30000
   h2:
     console:
       enabled: false
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-

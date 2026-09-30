@@ -1,0 +1,5 @@
+# Solo desarrollo en la máquina de cada quien (mvn spring-boot:run). Nunca se usa en contenedores.
+spring:
+  h2:
+    console:
+      enabled: true

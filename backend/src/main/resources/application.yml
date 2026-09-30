@@ -10,9 +10,11 @@ spring:
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
     driver-class-name: org.h2.Driver
+  # La consola H2 permite ejecutar SQL (y en versiones vulnerables, código) desde el navegador.
+  # Apagada por defecto; solo se prende con el perfil local (mvn spring-boot:run lo activa).
   h2:
     console:
-      enabled: true
+      enabled: false
       path: /h2-console
   jpa:
     open-in-view: false
