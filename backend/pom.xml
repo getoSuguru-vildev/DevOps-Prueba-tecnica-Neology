@@ -19,6 +19,9 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- Spring Boot 3.3.5 trae Tomcat 10.1.31 con 7 CVE CRITICAL (CVE-2025-24813 y otros).
+             Se sube solo Tomcat dentro de la misma línea 10.1; subir Spring Boot queda en el plan. -->
+        <tomcat.version>10.1.60</tomcat.version>
     </properties>
 
     <dependencies>
