@@ -273,7 +273,7 @@ jobs:
         run: docker compose down --volumes
 
   publish:
-    name: publicar ${{ matrix.service }} en GHCR
+    name: publicar imagenes en GHCR
     needs: [e2e, dependencias, iac]
     # Nunca desde pull requests: solo push a main o tags de versión.
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
