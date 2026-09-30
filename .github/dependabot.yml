@@ -33,6 +33,11 @@ updates:
       maven:
         update-types: [minor, patch]
 
+  - package-ecosystem: terraform
+    directories: [/infra/environments/dev, /infra/environments/prod]
+    schedule:
+      interval: weekly
+
   - package-ecosystem: npm
     directory: /frontend
     schedule:

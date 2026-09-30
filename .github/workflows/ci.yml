@@ -134,6 +134,29 @@ jobs:
             --scanners vuln,secret --skip-files backend/pom.xml --severity CRITICAL --ignore-unfixed --exit-code 1 \
             --ignorefile /src/.trivyignore /src
 
+  iac:
+    name: terraform (fmt, validate, plan, trivy config)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.16.4"
+          terraform_wrapper: false
+
+      # fmt -check, init sin backend, validate y plan de dev y prod sin cuenta de AWS.
+      - name: validar y plan offline
+        run: ./infra/scripts/plan-offline.sh
+
+      - name: trivy config (misconfig en terraform)
+        run: |
+          docker run --rm -v "$PWD/infra:/src:ro" "$TRIVY_IMAGE" config \
+            --severity HIGH,CRITICAL --exit-code 1 /src
+
   images:
     name: imagen ${{ matrix.service }}
     needs: [backend, frontend, lint]
@@ -238,7 +261,7 @@ jobs:
 
   publish:
     name: publicar ${{ matrix.service }} en GHCR
-    needs: [e2e, dependencias]
+    needs: [e2e, dependencias, iac]
     # Nunca desde pull requests: solo push a main o tags de versión.
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-24.04
