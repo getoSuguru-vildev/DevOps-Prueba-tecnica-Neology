@@ -109,6 +109,52 @@ services:
           cpus: "0.5"
           memory: 128M
 
+  # --- Perfil opcional: docker compose --profile observability up ---
+  prometheus:
+    <<: *hardening
+    profiles: [observability]
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./observability/prometheus:/etc/prometheus:ro
+    tmpfs:
+      - /prometheus:mode=1777
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  grafana:
+    <<: *hardening
+    profiles: [observability]
+    image: grafana/grafana:13.2.3@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change_me_local_only}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/parking-api.json
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
+    tmpfs:
+      - /var/lib/grafana:mode=1777
+      - /var/log/grafana:mode=1777
+      - /tmp:mode=1777
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    networks: [edge]
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
 networks:
   # edge: tráfico desde el host hacia frontend y backend.
   edge: {}

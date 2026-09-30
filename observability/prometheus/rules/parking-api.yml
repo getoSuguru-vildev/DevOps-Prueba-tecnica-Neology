@@ -1,0 +1,106 @@
+# SLI, SLO y alertas de la API (/neo/**). Explicación en docs/observability.md.
+#
+# SLO de disponibilidad: 99.5% de peticiones sin 5xx en 30 días -> presupuesto de error 0.5%.
+# SLO de latencia: 95% de peticiones en menos de 300 ms.
+
+groups:
+  - name: parking-api-sli
+    rules:
+      - record: sli:api_requests:rate5m
+        expr: sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*"}[5m]))
+
+      - record: sli:api_errors:rate5m
+        expr: sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*", status=~"5.."}[5m]))
+
+      # Proporción de errores en varias ventanas, para las alertas de burn rate.
+      - record: sli:api_error_ratio:rate5m
+        expr: sli:api_errors:rate5m / sli:api_requests:rate5m
+      - record: sli:api_error_ratio:rate30m
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*", status=~"5.."}[30m]))
+          / sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*"}[30m]))
+      - record: sli:api_error_ratio:rate1h
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*", status=~"5.."}[1h]))
+          / sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*"}[1h]))
+      - record: sli:api_error_ratio:rate6h
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*", status=~"5.."}[6h]))
+          / sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*"}[6h]))
+
+      # SLI de latencia: fracción de peticiones que respondieron en menos de 300 ms.
+      - record: sli:api_fast_ratio:rate5m
+        expr: |
+          sum(rate(http_server_requests_seconds_bucket{job="parking-backend", uri=~"/neo/.*", le="0.3"}[5m]))
+          / sum(rate(http_server_requests_seconds_count{job="parking-backend", uri=~"/neo/.*"}[5m]))
+
+      - record: sli:api_latency_p95:5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="parking-backend", uri=~"/neo/.*"}[5m])))
+
+  - name: parking-api-alertas
+    rules:
+      # Quema rápida: a este ritmo se acaba el presupuesto del mes en ~2 días. Despierta a alguien.
+      - alert: ApiErrorBudgetBurnFast
+        expr: sli:api_error_ratio:rate1h > (14.4 * 0.005) and sli:api_error_ratio:rate5m > (14.4 * 0.005)
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "La API está consumiendo el presupuesto de error muy rápido"
+          description: "{{ $value | humanizePercentage }} de errores 5xx en /neo/** (umbral 7.2%). Revisar último despliegue y conexiones a PostgreSQL."
+          runbook: "docs/runbook.md#incidente"
+
+      # Quema lenta: problema sostenido que no es urgente de madrugada. Ticket.
+      - alert: ApiErrorBudgetBurnSlow
+        expr: sli:api_error_ratio:rate6h > (6 * 0.005) and sli:api_error_ratio:rate30m > (6 * 0.005)
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Errores 5xx sostenidos en la API"
+          description: "{{ $value | humanizePercentage }} de errores en las últimas horas (umbral 3%)."
+
+      - alert: ApiLatencyP95High
+        expr: sli:api_latency_p95:5m > 0.3
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "p95 de la API arriba de 300 ms"
+          description: "p95 actual {{ $value | humanizeDuration }}. Revisar pool de conexiones y queries lentas."
+
+      - alert: BackendDown
+        expr: up{job="parking-backend"} == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Prometheus no puede leer métricas del backend"
+          description: "El backend no responde en /actuator/prometheus desde hace más de 1 minuto."
+
+      # El síntoma del incidente de la prueba: el pool se llena y las peticiones esperan conexión.
+      - alert: DbPoolSaturated
+        expr: max(hikaricp_connections_active{job="parking-backend"} / hikaricp_connections_max{job="parking-backend"}) > 0.9 or max(hikaricp_connections_pending{job="parking-backend"}) > 0
+        for: 3m
+        labels:
+          severity: page
+        annotations:
+          summary: "Pool de conexiones a PostgreSQL saturado"
+          description: "Conexiones activas cerca del máximo o peticiones esperando conexión. Posible fuga, query lenta o demasiadas instancias."
+
+      - alert: BackendRestarting
+        expr: changes(process_start_time_seconds{job="parking-backend"}[15m]) > 2
+        labels:
+          severity: page
+        annotations:
+          summary: "El backend se reinició más de 2 veces en 15 minutos"
+          description: "Revisar OOM (memoria), health checks y logs de arranque."
+
+      - alert: JvmHeapHigh
+        expr: sum(jvm_memory_used_bytes{job="parking-backend", area="heap"}) / sum(jvm_memory_max_bytes{job="parking-backend", area="heap"} > 0) > 0.9
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Heap de la JVM arriba del 90%"
+          description: "Riesgo de OutOfMemoryError; la imagen sale con ExitOnOutOfMemoryError y el contenedor se reinicia."

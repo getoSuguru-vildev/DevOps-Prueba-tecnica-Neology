@@ -1,0 +1,55 @@
+# Pruebas de las reglas: promtool test rules observability/prometheus/tests/parking-api.test.yml
+rule_files:
+  - ../rules/parking-api.yml
+
+evaluation_interval: 1m
+
+tests:
+  # 10% de errores sostenidos: debe disparar la alerta de quema rápida.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="parking-backend", uri="/neo/vehiculos", status="200"}'
+        values: "0+90x70"
+      - series: 'http_server_requests_seconds_count{job="parking-backend", uri="/neo/vehiculos", status="500"}'
+        values: "0+10x70"
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: ApiErrorBudgetBurnFast
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: "La API está consumiendo el presupuesto de error muy rápido"
+              description: "10% de errores 5xx en /neo/** (umbral 7.2%). Revisar último despliegue y conexiones a PostgreSQL."
+              runbook: "docs/runbook.md#incidente"
+
+  # Sin errores: no debe haber alerta.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="parking-backend", uri="/neo/vehiculos", status="200"}'
+        values: "0+100x70"
+      - series: 'http_server_requests_seconds_count{job="parking-backend", uri="/neo/vehiculos", status="500"}'
+        values: "0+0x70"
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: ApiErrorBudgetBurnFast
+        exp_alerts: []
+
+  # Pool con peticiones esperando conexión por más de 3 minutos.
+  - interval: 1m
+    input_series:
+      - series: 'hikaricp_connections_active{job="parking-backend", pool="HikariPool-1"}'
+        values: "10x10"
+      - series: 'hikaricp_connections_max{job="parking-backend", pool="HikariPool-1"}'
+        values: "10x10"
+      - series: 'hikaricp_connections_pending{job="parking-backend", pool="HikariPool-1"}'
+        values: "5x10"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DbPoolSaturated
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: "Pool de conexiones a PostgreSQL saturado"
+              description: "Conexiones activas cerca del máximo o peticiones esperando conexión. Posible fuga, query lenta o demasiadas instancias."
