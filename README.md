@@ -1,177 +1,160 @@
-# Aplicación base — Prueba técnica DevOps Neology
+# Estacionamiento Neology: prueba técnica DevOps
 
-Aplicación funcional de estacionamiento compuesta por un backend en Spring Boot, un frontend en Angular y dos opciones de base de datos:
+Aplicación de estacionamiento (Spring Boot + Angular + PostgreSQL) preparada para construirse, probarse, desplegarse y operarse de forma segura y reproducible. La funcionalidad es la de la aplicación base; lo que cambia es todo lo de alrededor.
 
-- **H2 en memoria** para ejecución local rápida.
-- **PostgreSQL** al levantar el stack con Docker Compose.
+**Entrega**: rama `candidato/karen-villasenor`.
 
-Este código está pensado para publicarse dentro del repositorio `DevOps-Prueba-tecnica-Neology` como material inicial de la prueba DevOps. No conviene publicarlo como solución en la rama principal de `Full-Stack-Prueba-tecnica-Neology`, porque implementa buena parte del ejercicio que debe resolver el candidato Full Stack.
+## Qué se hizo
 
-## Funcionalidad incluida
+| Actividad | Dónde | Resumen |
+| --- | --- | --- |
+| 1. Contenedores y ejecución local | `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `docker-compose.yml` | Multi-stage con bases fijadas por digest, sin root, sin curl, filesystem de solo lectura, redes separadas, health checks sin dependencias extra, apagado ordenado con SIGTERM. Backend de 464 MB a 266 MB. Se arreglaron dos fallas de la base: `npm ci` no funcionaba (lock generado con npm 11) y los scripts no tenían permiso de ejecución. |
+| 2. CI/CD | `.github/workflows/ci.yml`, `docs/ci-cd.md` | Pruebas, build, lint, Trivy (dependencias, imágenes, Terraform), SBOM, compose completo con smoke test y simulacro de restauración, publicación solo desde `main` o tags, con firma. |
+| 3. Infraestructura como código | `infra/` | Terraform para AWS: VPC en 3 capas, ALB, ECS Fargate, RDS PostgreSQL, ECR, Secrets Manager, CloudWatch. Ambientes dev y prod. Valida y hace plan sin cuenta de AWS. |
+| 4. Seguridad | `docs/security.md` | Sin secretos en repo ni imágenes, inyección desde Secrets Manager, privilegio mínimo, 10 riesgos encontrados con su tratamiento. Tomcat parchado: de 7 CVE CRITICAL a 0. |
+| 5. Observabilidad | `docs/observability.md`, `observability/` | Logs JSON con `requestId` de punta a punta, métricas Prometheus, SLI/SLO con alertas de burn rate (con pruebas), Grafana y alarmas de CloudWatch. |
+| 6. Recuperación | `scripts/backup.sh`, `scripts/restore.sh`, `scripts/restore-drill.sh`, `docs/backup-recovery.md` | Respaldo validado con checksum, restauración transaccional, simulacro medido (~8 s de restauración), RPO/RTO, rollback de app y configuración. Migraciones con Flyway. |
+| 7. Incidente | `docs/incident-response.md` | Señales, hipótesis, contención, criterios de rollback, comunicación y prevención. |
 
-- Alta de vehículos oficiales, residentes y no residentes.
-- Registro de entrada y salida.
-- Prevención de dos entradas simultáneas para la misma placa.
-- Cobro de residentes a `$0.05` por minuto acumulado.
-- Cobro de no residentes a `$0.50` por minuto al salir.
-- Vehículos oficiales sin cobro.
-- Listado y filtro de vehículos.
-- Detalle de vehículo y sus estancias.
-- Reporte mensual de residentes.
-- Inicio de un nuevo mes, siempre que no existan estancias abiertas.
-- Endpoint de salud para validaciones operativas.
+Documentación: [arquitectura y decisiones](docs/architecture.md) · [runbook](docs/runbook.md) · [CI/CD](docs/ci-cd.md) · [seguridad](docs/security.md) · [observabilidad](docs/observability.md) · [respaldo y recuperación](docs/backup-recovery.md) · [incidente](docs/incident-response.md) · [infraestructura](infra/README.md) · [evidencia](docs/evidencia/README.md)
 
-Cada minuto iniciado se cobra como un minuto completo. Los importes se manejan con `BigDecimal` para evitar errores de punto flotante.
+## Levantar todo con Docker Compose
 
-## Estructura
-
-```text
-.
-├── backend/                 API Spring Boot 3 + Java 17
-├── frontend/                SPA Angular 18 + Angular Material
-├── scripts/
-│   ├── smoke-test.sh        Prueba funcional de la API
-│   ├── verify.sh            Pruebas y compilación
-│   └── verify-local-stack.sh
-├── .env.example
-├── docker-compose.yml
-└── README.md
-```
-
-## Opción 1: levantar todo con Docker Compose
-
-### Requisitos
-
-- Docker Desktop o Docker Engine con Docker Compose v2.
-- Puertos `4200` y `8080` disponibles.
-
-### Ejecución
-
-En Linux o macOS:
+Requisitos: Docker con Compose v2 y los puertos 4200 y 8080 libres.
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
 
-En PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-docker compose up --build
-```
-
-Esperar hasta que los tres servicios aparezcan como iniciados. Después abrir:
-
-- Frontend: <http://localhost:4200>
-- Salud del backend: <http://localhost:8080/actuator/health>
-- API de vehículos: <http://localhost:8080/neo/vehiculos>
-
-Consultar el estado:
+Funciona sin `.env`, con valores que solo sirven para local. Para cambiarlos:
 
 ```bash
-docker compose ps
+cp .env.example .env      # PowerShell: Copy-Item .env.example .env
+```
+
+| Qué | URL |
+| --- | --- |
+| Frontend | <http://localhost:4200> |
+| Salud del backend | <http://localhost:8080/actuator/health> |
+| API | <http://localhost:8080/neo/vehiculos> |
+| Métricas (solo desde el host) | <http://localhost:8080/actuator/prometheus> |
+
+```bash
+docker compose ps                                  # los tres en (healthy)
 docker compose logs --tail=100 backend frontend
+docker compose down                                # detener, conserva datos
+docker compose down --volumes                      # detener y borrar la base
 ```
 
-Detener sin borrar los datos:
+Con Prometheus y Grafana (dashboard y alertas ya cargados):
 
 ```bash
-docker compose down
+docker compose --profile observability up --build
+# Prometheus http://localhost:9090   Grafana http://localhost:3000 (admin / change_me_local_only)
 ```
 
-Detener y borrar exclusivamente el volumen de PostgreSQL de este proyecto:
+## Levantar localmente con H2 (sin Docker)
+
+Requisitos: Java 17, Maven 3.9, Node.js 22 LTS con npm 10 o superior.
 
 ```bash
-docker compose down --volumes
-```
-
-## Opción 2: levantar localmente con H2
-
-### Requisitos
-
-- Java 17 o superior.
-- Maven 3.9 o superior.
-- Node.js 20 LTS y npm 10 o superior.
-- Puertos `4200` y `8080` disponibles.
-
-### Terminal 1 — backend
-
-```bash
+# Terminal 1: backend con H2 en memoria (el perfil local activa la consola H2)
 cd backend
 mvn spring-boot:run
-```
 
-El perfil predeterminado usa H2 en memoria; no requiere instalar una base de datos. La consola H2 queda disponible en <http://localhost:8080/h2-console> con:
-
-- JDBC URL: `jdbc:h2:mem:parking`
-- Usuario: `sa`
-- Contraseña: vacía
-
-### Terminal 2 — frontend
-
-```bash
+# Terminal 2: frontend
 cd frontend
 npm ci
 npm start
 ```
 
-Abrir <http://localhost:4200>. El servidor de desarrollo redirige las llamadas `/neo` y `/actuator` hacia `http://localhost:8080`.
+Abrir <http://localhost:4200>. La consola H2 queda en <http://localhost:8080/h2-console> (JDBC URL `jdbc:h2:mem:parking`, usuario `sa`, sin contraseña). Solo existe con `mvn spring-boot:run`; el jar y las imágenes no la incluyen.
 
-## Validación automática
+## Validaciones
 
-### 1. Pruebas y compilación
+| Comando | Qué valida | Necesita |
+| --- | --- | --- |
+| `./scripts/verify-docker.sh` | Pruebas del backend y build de producción del frontend | Docker |
+| `./scripts/verify.sh` | Lo mismo, con herramientas locales | Java 17, Maven, Node |
+| `./scripts/verify-local-stack.sh` | Backend con H2 + frontend + smoke test | Java 17, Maven, Node |
+| `./scripts/smoke-test.sh` | Salud, alta, entrada, salida, reporte y frontend contra un stack arriba | curl |
+| `./scripts/restore-drill.sh --yes` | Respaldo, borrado de la base, restauración y verificación (borra la base local) | Docker |
+| `./infra/scripts/plan-offline.sh` | `terraform fmt`, `validate` y `plan` de dev y prod sin cuenta de AWS | Docker o Terraform |
 
-Desde la raíz del repositorio:
-
-```bash
-./scripts/verify.sh
-```
-
-El comando falla inmediatamente si ocurre alguno de estos problemas:
-
-- No compila Java.
-- Falla una prueba de negocio del backend.
-- No se pueden instalar de forma reproducible las dependencias del frontend.
-- Angular no compila en modo producción.
-
-### 2. Stack local integrado
-
-Con los puertos `4200` y `8080` libres:
+Secuencia de la guía de evaluación, tal cual:
 
 ```bash
-./scripts/verify-local-stack.sh
-```
-
-El script levanta temporalmente backend y frontend, espera que estén disponibles y ejecuta un recorrido real contra la API. Al terminar cierra ambos procesos.
-
-### 3. Prueba funcional contra un stack ya levantado
-
-```bash
+./scripts/verify.sh            # o ./scripts/verify-docker.sh si no hay Java/Maven
+docker compose config
+docker compose build --no-cache
+docker compose up --detach
+docker compose ps
 ./scripts/smoke-test.sh
+docker compose logs --tail=150 backend frontend database
+docker compose down
 ```
 
-Se valida:
+Terraform, en `infra/environments/dev` (o `prod`):
 
-1. Health check del backend.
-2. Alta de un residente.
-3. Registro de entrada.
-4. Registro de salida.
-5. Aparición de la placa en el reporte de residentes.
-6. Respuesta HTTP del frontend, si está levantado.
+```bash
+terraform fmt -check -recursive ../..
+terraform init -backend=false
+terraform validate
+terraform plan -var offline_plan=true
+```
 
-## Validación manual recomendada
+`offline_plan=true` permite el plan sin credenciales de AWS. Con credenciales reales se omite.
 
-1. Abrir el frontend.
-2. Registrar una placa como `RESIDENTE`.
-3. Presionar **Registrar entrada**.
-4. Confirmar que el estado cambia a **Dentro**.
-5. Presionar **Registrar salida**.
-6. Abrir **Reporte de residentes** y confirmar el tiempo y el importe.
-7. Abrir el detalle del vehículo y revisar la estancia cerrada.
-8. Iniciar un nuevo mes y confirmar que el acumulado queda en cero.
+## Respaldo y restauración
 
-## API disponible
+```bash
+./scripts/backup.sh                                  # backups/parking-<fecha>.dump + .sha256
+./scripts/restore.sh backups/parking-<fecha>.dump    # confirma, respalda lo actual y restaura
+```
+
+Detalle, RPO/RTO y procedimiento en AWS: [docs/backup-recovery.md](docs/backup-recovery.md).
+
+## Pipeline
+
+Corre en cada push a `main` y `candidato/**`, en pull requests a `main` y en tags `vX.Y.Z`. En la rama de entrega valida todo y no publica. Detalle en [docs/ci-cd.md](docs/ci-cd.md).
+
+## Estructura
+
+```text
+.
+├── .github/                 pipeline y dependabot
+├── backend/                 API Spring Boot 3 + Java 17 (Dockerfile, migraciones Flyway)
+├── frontend/                SPA Angular 18 + nginx (Dockerfile, nginx.conf)
+├── infra/                   Terraform AWS: modules/ y environments/dev|prod
+├── observability/           Prometheus (reglas y pruebas) y Grafana
+├── scripts/                 verificación, smoke test, respaldo, restauración y simulacro
+├── docs/                    arquitectura, runbook, seguridad, observabilidad, recuperación, incidente, evidencia
+├── .env.example
+└── docker-compose.yml
+```
+
+## Limitaciones conocidas
+
+- La infraestructura no se aplicó en una cuenta real de AWS; está validada con `validate`, `plan` y Trivy.
+- El despliegue a AWS desde el pipeline está documentado pero no implementado.
+- Angular 18 y Spring Boot 3.3 están fuera de soporte: 0 CRITICAL, pero quedan HIGH que se arreglan actualizando el framework (plan en `docs/security.md`).
+- La API no tiene autenticación; la propuesta está en `docs/security.md`.
+- No hay pruebas de frontend en el proyecto base.
+
+Más detalle en [docs/architecture.md](docs/architecture.md#limitaciones-conocidas).
+
+## Aplicación base
+
+### Funcionalidad
+
+- Alta de vehículos oficiales, residentes y no residentes.
+- Registro de entrada y salida; no permite dos entradas abiertas para la misma placa.
+- Residentes: `$0.05` por minuto acumulado en el mes. No residentes: `$0.50` por minuto al salir. Oficiales: sin cobro.
+- Cada minuto iniciado se cobra completo; los importes usan `BigDecimal`.
+- Listado y filtro de vehículos, detalle con estancias, reporte mensual de residentes.
+- Inicio de un nuevo mes, siempre que no haya estancias abiertas.
+
+### API
 
 | Método | Ruta | Objetivo |
 | --- | --- | --- |
@@ -186,68 +169,19 @@ Se valida:
 | `POST` | `/neo/mes/iniciar` | Reiniciar el mes |
 | `GET` | `/actuator/health` | Verificar salud del backend |
 
-Ejemplo de alta:
-
 ```bash
 curl -i -X POST http://localhost:8080/neo/vehiculos/residentes \
-  -H 'Content-Type: application/json' \
-  -d '{"placa":"ABC-123"}'
-```
-
-Ejemplo de entrada:
-
-```bash
+  -H 'Content-Type: application/json' -d '{"placa":"ABC-123"}'
 curl -i -X POST http://localhost:8080/neo/estancias/entrada \
-  -H 'Content-Type: application/json' \
-  -d '{"placa":"ABC-123"}'
+  -H 'Content-Type: application/json' -d '{"placa":"ABC-123"}'
 ```
 
-## Criterio para considerar que la aplicación está lista
+Cada respuesta trae el header `X-Request-ID`; con ese valor se encuentra la petición en los logs de nginx y del backend.
 
-| Comprobación | Resultado esperado |
-| --- | --- |
-| `mvn test` | `BUILD SUCCESS` |
-| `npm ci` | Instalación sin conflicto de dependencias |
-| `npm run build` | Bundle de producción generado |
-| `/actuator/health` | `{"status":"UP"}` |
-| `smoke-test.sh` | Mensaje `SMOKE TEST CORRECTO` |
-| Navegador | Pantalla de vehículos visible y acciones funcionales |
+### Validación manual
 
-## Cómo publicarlo en GitHub
-
-Crear en GitHub un repositorio vacío llamado `DevOps-Prueba-tecnica-Neology`, sin README ni `.gitignore` generados por GitHub. Después, desde esta carpeta:
-
-```bash
-git init
-git add .
-git commit -m "feat: agregar aplicación base para prueba DevOps"
-git branch -M main
-git remote add origin https://github.com/ORGANIZACION/DevOps-Prueba-tecnica-Neology.git
-git push -u origin main
-```
-
-Se recomienda etiquetar la base entregada al candidato:
-
-```bash
-git tag -a app-base-v1.0.0 -m "Aplicación base validada"
-git push origin app-base-v1.0.0
-```
-
-Cada candidato debe trabajar en una rama propia:
-
-```bash
-git switch -c candidato/nombre-apellido
-git push -u origin candidato/nombre-apellido
-```
-
-La rama `main` conserva la aplicación base y permite comparar con claridad los cambios de Docker, pipeline, infraestructura, seguridad y observabilidad realizados por el candidato.
-
-## Observaciones para la evaluación DevOps
-
-La base ya contiene Dockerfiles y Compose únicamente para facilitar una referencia ejecutable. Antes de entregar la prueba puede elegirse una de estas dos modalidades:
-
-- **Evaluación desde cero:** retirar los Dockerfiles y `docker-compose.yml`; el candidato debe crearlos.
-- **Evaluación de mejora:** conservarlos y pedir al candidato que los audite, endurezca, optimice y prepare para producción.
-
-Para una prueba de cinco horas recomiendo la modalidad de mejora: permite evaluar decisiones de seguridad, eficiencia, CI/CD, IaC, observabilidad y recuperación sin consumir la mayor parte del tiempo en configuración básica.
-
+1. Abrir el frontend y registrar una placa como `RESIDENTE`.
+2. **Registrar entrada**: el estado cambia a **Dentro**.
+3. **Registrar salida**, abrir **Reporte de residentes** y revisar tiempo e importe.
+4. Abrir el detalle del vehículo y revisar la estancia cerrada.
+5. Iniciar un nuevo mes y confirmar que el acumulado queda en cero.
