@@ -32,12 +32,32 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus no se publica hacia internet: nginx y el ALB solo dejan pasar /actuator/health.
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
         enabled: true
       show-details: never
+      group:
+        # liveness no depende de la base (si la base cae, reiniciar la app no ayuda);
+        # readiness sí, para que el balanceador deje de mandar tráfico a una instancia sin base.
+        readiness:
+          include: readinessState,db
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      # Buckets para calcular percentiles en Prometheus y medir el SLO de latencia (300 ms).
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,300ms,1s
+
+logging:
+  pattern:
+    # En formato texto también se ve el requestId de cada línea.
+    level: "%5p [%X{requestId:-}]"
 
 info:
   app:
