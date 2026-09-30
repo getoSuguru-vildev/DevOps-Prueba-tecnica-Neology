@@ -26,6 +26,7 @@ env:
   HADOLINT_IMAGE: hadolint/hadolint:v2.14.0@sha256:27086352fd5e1907ea2b934eb1023f217c5ae087992eb59fde121dce9c9ff21e
   SHELLCHECK_IMAGE: koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
   ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+  PROMETHEUS_IMAGE: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
 
 jobs:
   backend:
@@ -87,7 +88,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=critical
 
   lint:
-    name: lint (dockerfiles, scripts, workflow, compose)
+    name: lint (dockerfiles, scripts, workflow, compose, alertas)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -110,6 +111,13 @@ jobs:
 
       - name: docker compose config
         run: docker compose config --quiet
+
+      - name: promtool (config, reglas y pruebas de alertas)
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/observability/prometheus:/etc/prometheus:ro" \
+            "$PROMETHEUS_IMAGE" check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint promtool -v "$PWD/observability/prometheus:/etc/prometheus:ro" \
+            -w /etc/prometheus/tests "$PROMETHEUS_IMAGE" test rules parking-api.test.yml
 
   dependencias:
     name: seguridad (dependencias y secretos)
