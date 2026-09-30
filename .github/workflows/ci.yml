@@ -22,6 +22,7 @@ env:
   # Herramientas en contenedor fijadas por digest (las mismas que se usan en local).
   TRIVY_IMAGE: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
   TRIVY_DB: public.ecr.aws/aquasecurity/trivy-db,mirror.gcr.io/aquasec/trivy-db
+  TRIVY_JAVA_DB: public.ecr.aws/aquasecurity/trivy-java-db,mirror.gcr.io/aquasec/trivy-java-db
   HADOLINT_IMAGE: hadolint/hadolint:v2.14.0@sha256:27086352fd5e1907ea2b934eb1023f217c5ae087992eb59fde121dce9c9ff21e
   SHELLCHECK_IMAGE: koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
   ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
@@ -194,18 +195,18 @@ jobs:
       - name: trivy image (reporte)
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" image \
-            --db-repository "$TRIVY_DB" --severity HIGH,CRITICAL --exit-code 0 "$IMAGE"
+            --db-repository "$TRIVY_DB" --java-db-repository "$TRIVY_JAVA_DB" --severity HIGH,CRITICAL --exit-code 0 "$IMAGE"
 
       - name: trivy image (gate CRITICAL)
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/src:ro" "$TRIVY_IMAGE" image \
-            --db-repository "$TRIVY_DB" --severity CRITICAL --ignore-unfixed --exit-code 1 \
+            --db-repository "$TRIVY_DB" --java-db-repository "$TRIVY_JAVA_DB" --severity CRITICAL --ignore-unfixed --exit-code 1 \
             --ignorefile /src/.trivyignore "$IMAGE"
 
       - name: sbom cyclonedx
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD:/out" "$TRIVY_IMAGE" image \
-            --db-repository "$TRIVY_DB" --format cyclonedx --output "/out/sbom-${{ matrix.service }}.cdx.json" "$IMAGE"
+            --db-repository "$TRIVY_DB" --java-db-repository "$TRIVY_JAVA_DB" --format cyclonedx --output "/out/sbom-${{ matrix.service }}.cdx.json" "$IMAGE"
 
       - name: exportar imagen
         run: docker save "$IMAGE" | gzip -1 > "image-${{ matrix.service }}.tar.gz"
