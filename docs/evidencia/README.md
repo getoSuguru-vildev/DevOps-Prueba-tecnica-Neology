@@ -23,7 +23,7 @@ Todo se corrió el 2026-09-30 sobre el commit indicado en cada archivo, en una M
 | Trivy config sobre Terraform | 0 HIGH/CRITICAL | [07](07-trivy.txt) |
 | Correlación por `X-Request-ID` | mismo id en respuesta, log de nginx y log del backend | [08](08-correlacion-y-runtime.txt) |
 | Runtime | procesos sin root, filesystem de solo lectura, sin curl, métricas y consola H2 no publicadas, apagado ordenado en 0.2 s | [08](08-correlacion-y-runtime.txt) |
-| Pipeline de GitHub Actions | pendiente del primer push | |
+| Pipeline de GitHub Actions | verde en ~7 min: 8 jobs correctos, publicación saltada en la rama como se diseñó ([run 36662022276](https://github.com/getoSuguru-vildev/DevOps-Prueba-tecnica-Neology/actions/runs/36662022276)) | [09](09-pipeline.txt) |
 
 ## Antes y después
 

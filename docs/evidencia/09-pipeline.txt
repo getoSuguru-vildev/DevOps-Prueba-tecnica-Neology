@@ -1,0 +1,21 @@
+# GitHub Actions, workflow "ci", run 36662022276 sobre el commit ca38050 (push a candidato/karen-villasenor)
+# https://github.com/getoSuguru-vildev/DevOps-Prueba-tecnica-Neology/actions/runs/36662022276
+# inicio 2026-09-30T02:54:59Z, fin 2026-09-30T03:01:57Z, resultado: success
+
+job                                                     resultado  duracion
+lint (dockerfiles, scripts, workflow, compose, alertas) success    0m16s
+seguridad (dependencias y secretos)                     success    0m37s
+terraform (fmt, validate, plan, trivy config)           success    0m40s
+frontend (npm ci y build)                               success    0m42s
+backend (pruebas y jar)                                 success    0m54s
+imagen frontend                                         success    1m36s
+imagen backend                                          success    4m20s
+stack completo (compose, smoke test y restore)          success    1m36s
+publicar en GHCR                                        skipped    (solo corre en push a main o tags vX.Y.Z)
+
+artefactos del run
+backend-surefire-reports   reportes de pruebas
+sbom-backend               SBOM CycloneDX de la imagen del backend
+sbom-frontend              SBOM CycloneDX de la imagen del frontend
+image-backend              imagen probada (tar.gz, 1 dia)
+image-frontend             imagen probada (tar.gz, 1 dia)
