@@ -1,0 +1,9 @@
+# Solo lo necesario para compilar Angular y configurar nginx.
+*
+!package.json
+!package-lock.json
+!angular.json
+!tsconfig.json
+!tsconfig.app.json
+!src/
+!nginx.conf
