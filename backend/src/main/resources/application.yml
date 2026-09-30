@@ -16,10 +16,14 @@ spring:
     console:
       enabled: false
       path: /h2-console
+  # El esquema lo crea Flyway (db/migration). Hibernate solo valida que coincida con las entidades.
+  # baseline-on-migrate: una base que ya tenía las tablas creadas por Hibernate se toma como versión 1.
+  flyway:
+    baseline-on-migrate: true
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
