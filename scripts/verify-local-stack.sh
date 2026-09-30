@@ -6,12 +6,22 @@ verify_tmp_dir="$(mktemp -d)"
 backend_pid=""
 frontend_pid=""
 
+# Mata un proceso y todos sus descendientes. Matar solo el subshell dejaba vivos a mvn y al java
+# de Spring Boot (puerto 8080) y a npm con ng serve (puerto 4200) después de terminar.
+kill_tree() {
+  local pid="$1" child
+  for child in $(pgrep -P "$pid" 2>/dev/null); do
+    kill_tree "$child"
+  done
+  kill "$pid" 2>/dev/null || true
+}
+
 cleanup() {
-  if [[ -n "$frontend_pid" ]] && kill -0 "$frontend_pid" 2>/dev/null; then
-    kill "$frontend_pid" 2>/dev/null || true
+  if [[ -n "$frontend_pid" ]]; then
+    kill_tree "$frontend_pid"
   fi
-  if [[ -n "$backend_pid" ]] && kill -0 "$backend_pid" 2>/dev/null; then
-    kill "$backend_pid" 2>/dev/null || true
+  if [[ -n "$backend_pid" ]]; then
+    kill_tree "$backend_pid"
   fi
   rm -rf -- "$verify_tmp_dir"
 }
