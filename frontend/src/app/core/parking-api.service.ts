@@ -10,6 +10,7 @@ import {
   VehicleDetail,
   VehicleType
 } from './models';
+import { REQUEST_ID_HEADER } from './request-id.interceptor';
 
 @Injectable({ providedIn: 'root' })
 export class ParkingApiService {
@@ -59,7 +60,10 @@ export class ParkingApiService {
     const body = response.error as ApiError | undefined;
     const fieldMessages = body?.campos ? Object.values(body.campos).join('. ') : '';
     const message = fieldMessages || body?.mensaje || 'No fue posible comunicarse con el servidor';
-    return throwError(() => new Error(message));
+    // En errores del servidor se muestra el id de la petición para que soporte la encuentre en los logs.
+    const requestId = response.headers?.get(REQUEST_ID_HEADER);
+    const withReference = response.status >= 500 && requestId ? `${message} (referencia: ${requestId})` : message;
+    return throwError(() => new Error(withReference));
   };
 }
 
