@@ -137,7 +137,6 @@ Detalle en `docs/ci-cd.md`.
 - El proyecto no trae pruebas de frontend; la validación es el build AOT estricto y `npm audit`.
 - La API no tiene autenticación (riesgo 8 en `docs/security.md`).
 - Trazas distribuidas: propuesta, no implementadas (`docs/observability.md`).
-- `verify.sh` y `verify-local-stack.sh` necesitan Java y Maven instalados; yo validé con `verify-docker.sh` y con el pipeline, que corren las mismas pruebas y el mismo build.
 
 ## Costo aproximado (us-east-1, precios de lista)
 

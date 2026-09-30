@@ -1,6 +1,6 @@
 # Evidencia de las validaciones
 
-Todo se corrió el 2026-09-30 sobre el commit indicado en cada archivo, en una Mac con Apple Silicon usando Colima (Docker 29, 4 CPU, 6 GB). No hay Java ni Maven instalados en esa máquina, por eso `verify.sh` se reemplazó por `verify-docker.sh`, que corre exactamente las mismas pruebas y el mismo build dentro de contenedores.
+Todo se corrió el 2026-09-30 sobre el commit indicado en cada archivo, en una Mac con Apple Silicon usando Colima (Docker 29, 4 CPU, 6 GB). Los scripts que usan herramientas locales (`verify.sh` y `verify-local-stack.sh`) se corrieron con Java 17, Maven 3.9 y Node 22 de Homebrew y el bash 3.2 que trae macOS.
 
 ## Resumen
 
@@ -23,6 +23,8 @@ Todo se corrió el 2026-09-30 sobre el commit indicado en cada archivo, en una M
 | Trivy config sobre Terraform | 0 HIGH/CRITICAL | [07](07-trivy.txt) |
 | Correlación por `X-Request-ID` | mismo id en respuesta, log de nginx y log del backend | [08](08-correlacion-y-runtime.txt) |
 | Runtime | procesos sin root, filesystem de solo lectura, sin curl, métricas y consola H2 no publicadas, apagado ordenado en 0.2 s | [08](08-correlacion-y-runtime.txt) |
+| `verify.sh` con herramientas locales | 7 pruebas, BUILD SUCCESS, `npm ci` y build de producción correctos | [10](10-verify-local.txt) |
+| `verify-local-stack.sh` (Spring Boot con H2 + ng serve + smoke test) | `STACK LOCAL CORRECTO`; al terminar ya no deja procesos vivos | [10](10-verify-local.txt) |
 | Pipeline de GitHub Actions | verde en ~7 min: 8 jobs correctos, publicación saltada en la rama como se diseñó ([run 36662022276](https://github.com/getoSuguru-vildev/DevOps-Prueba-tecnica-Neology/actions/runs/36662022276)) | [09](09-pipeline.txt) |
 
 ## Antes y después
@@ -31,6 +33,7 @@ Todo se corrió el 2026-09-30 sobre el commit indicado en cada archivo, en una M
 | --- | --- | --- |
 | `npm ci` | falla (lock generado con npm 11) | correcto con npm 10 y 11 |
 | `./scripts/*.sh` | `permission denied` (modo 644) | ejecutables |
+| `verify-local-stack.sh` al terminar | dejaba java en 8080 y ng serve en 4200 | cierra todo el árbol de procesos |
 | `cp .env.example .env` del README | el archivo no existía | existe; compose funciona con o sin él |
 | CVE CRITICAL en la imagen del backend | 7 (Tomcat 10.1.31) | 0 |
 | curl en imágenes de runtime | backend y nginx | ninguno |
