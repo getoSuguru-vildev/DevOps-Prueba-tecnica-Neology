@@ -67,11 +67,11 @@ cosign verify ghcr.io/<dueño>/parking-backend@sha256:<digest> \
 
 Esto no está implementado porque no hay cuenta de AWS, pero el flujo que seguiría es:
 
-1. `publish` sube a ECR (o GHCR) con tag `sha-<commit>`.
-2. Job `deploy-dev`: se autentica en AWS con OIDC (`aws-actions/configure-aws-credentials` con un rol que solo puede registrar task definitions y actualizar los servicios de dev, sin llaves de larga duración), registra una nueva revisión de la task definition con el digest y hace `aws ecs update-service`. El circuit breaker de ECS regresa solo a la revisión anterior si los health checks fallan.
-3. Job `deploy-prod`: mismo digest, detrás de un `environment: prod` con aprobación manual.
+1. `publish` sube a ECR (o GHCR) con tag `sha-<commit>` y deja el digest en el resumen del job.
+2. Job `deploy-dev`: se autentica en AWS con OIDC (`aws-actions/configure-aws-credentials` con un rol limitado a la cuenta de dev, sin llaves de larga duración) y corre `terraform apply` en `infra/environments/dev` con `-var backend_image_digest=sha256:...` y `-var frontend_image_digest=sha256:...`. Terraform crea una revisión nueva de la task definition y ECS hace rolling update. Si las tareas nuevas no pasan health checks, el circuit breaker regresa solo a la revisión anterior.
+3. Job `deploy-prod`: el mismo digest que ya corrió en dev, en `infra/environments/prod`, detrás de un `environment: prod` con aprobación manual.
 
-El rollback es volver a desplegar la revisión anterior de la task definition (ver `docs/runbook.md`).
+Así Terraform es la única fuente de verdad: no hay task definitions registradas a mano que después Terraform quiera revertir. El rollback es volver a aplicar el digest anterior, o en una emergencia apuntar el servicio a la revisión anterior de la task definition (ver `docs/runbook.md`).
 
 ## Caché
 
