@@ -22,9 +22,10 @@ RUN mvn --batch-mode --no-transfer-progress package -DskipTests \
 ############################
 # Etapa 2: ejecución
 ############################
-# Liberica JRE 17 sobre Alpaquita (musl): ~44 MB, multi-arquitectura (amd64 y arm64) y es la JVM que usan
-# los buildpacks oficiales de Spring Boot. eclipse-temurin:17-jre-alpine solo existe para amd64.
-FROM bellsoft/liberica-runtime-container:jre-17.0.20.1_1-slim-musl@sha256:df940cbb015df69a32571c76060fec8734796ccbb2d90515fdbdf8540824e60b AS runtime
+# Temurin JRE 17 sobre Ubuntu 24.04 LTS: mismo proveedor que la etapa de build, multi-arquitectura
+# (amd64 y arm64) y Trivy reconoce el sistema operativo, así el gate de CVE también cubre los paquetes del SO.
+# (eclipse-temurin:17-jre-alpine solo existe para amd64, y el SO de Liberica/Alpaquita no lo detecta Trivy.)
+FROM eclipse-temurin:17-jre-noble@sha256:d1b6f76d8112c41f1068597741f0c0bda36d323365078e685381f72e5ec51ca0 AS runtime
 
 ARG VERSION=dev
 ARG REVISION=unknown
@@ -35,8 +36,11 @@ LABEL org.opencontainers.image.title="parking-api" \
       org.opencontainers.image.revision="${REVISION}"
 
 # Usuario sin privilegios con UID/GID fijos (compatibles con runAsNonRoot).
-RUN addgroup -S -g 10001 app \
-    && adduser -S -D -H -u 10001 -G app -h /app app
+# curl no se usa en runtime: se quita. wget se queda para el healthcheck.
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /app --no-create-home --shell /usr/sbin/nologin app \
+    && apt-get purge -y --auto-remove curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -54,7 +58,7 @@ ENV SPRING_PROFILES_ACTIVE=postgres \
 
 EXPOSE 8080
 
-# wget viene en busybox de la imagen base: no se instala curl en runtime.
+# wget ya viene en la imagen base; no se instala nada extra para el healthcheck.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=5 \
     CMD wget -q -O /dev/null http://127.0.0.1:8080/actuator/health/liveness || exit 1
 
