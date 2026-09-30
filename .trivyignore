@@ -1,0 +1,3 @@
+# Excepciones del gate de Trivy. Cada entrada necesita motivo, dueño y fecha de revisión.
+# Si una entrada vence, se quita y el pipeline vuelve a fallar hasta que se resuelva.
+# Formato: CVE-XXXX-YYYY  exp:AAAA-MM-DD
