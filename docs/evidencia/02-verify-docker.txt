@@ -1,0 +1,18 @@
+# Commit afd4b5f, Colima (Docker 29, arm64, 4 CPU), 2026-09-30
+
+$ ./scripts/verify-docker.sh
+[1/2] Pruebas del backend (mvn clean test)...
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.437 s -- in mx.neology.parking.service.ParkingServiceTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.046 s -- in mx.neology.parking.config.CorrelationIdFilterTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+[INFO] Total time:  1.888 s
+[2/2] Instalación reproducible y build de producción del frontend...
+Initial chunk files   | Names         |  Raw size | Estimated transfer size
+main-WNO3OFYO.js      | main          | 456.97 kB |                87.05 kB
+styles-MQV3NDKG.css   | styles        |  90.69 kB |                 8.51 kB
+polyfills-FFHMD2TL.js | polyfills     |  34.52 kB |                11.28 kB
+                      | Initial total | 766.17 kB |               159.75 kB
+Application bundle generation complete. [4.075 seconds]
+VALIDACIÓN CORRECTA (Docker): backend y frontend compilan; las pruebas finalizaron correctamente.
+[exit=0]

@@ -1,0 +1,17 @@
+# Commit afd4b5f, Colima (Docker 29, arm64, 4 CPU), 2026-09-30
+
+$ ./infra/scripts/plan-offline.sh
+== terraform fmt -check -recursive
+== [dev] init -backend=false
+== [dev] validate
+Success! The configuration is valid.
+
+== [dev] plan (offline)
+Plan: 79 to add, 0 to change, 0 to destroy.
+== [prod] init -backend=false
+== [prod] validate
+Success! The configuration is valid.
+
+== [prod] plan (offline)
+Plan: 93 to add, 0 to change, 0 to destroy.
+INFRAESTRUCTURA VALIDA: fmt, validate y plan correctos para: dev prod

@@ -1,0 +1,31 @@
+# Commit afd4b5f, Colima (Docker 29, arm64, 4 CPU), 2026-09-30
+
+$ curl -s -D - -o /dev/null -H "X-Request-ID: evidencia-123" http://localhost:4200/neo/vehiculos
+HTTP/1.1 200
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-hashes' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+X-Request-ID: evidencia-123
+
+$ docker compose logs frontend backend | grep evidencia-123
+{"time":"2026-09-30T02:52:15+00:00","request_id":"evidencia-123","remote_addr":"172.19.0.1","method":"GET","uri":"/neo/vehiculos","status":200,"bytes_sent":240,"request_time":0.122,"upstream_status":"200","upstream_response_time":"0.122","user_agent":"curl/8.7.1"}
+{"time":"2026-09-30T02:52:15.92132991Z","message":"GET /neo/vehiculos status=200 duration_ms=118","logger_name":"mx.neology.parking.config.CorrelationIdFilter","thread_name":"http-nio-8080-exec-5","level":"INFO","requestId":"evidencia-123","method":"GET","path":"/neo/vehiculos","status":200,"duration_ms":118,"service":"parking-api"}
+
+$ curl http://localhost:4200/actuator/prometheus
+HTTP 404 (no se publica por nginx)
+$ curl http://localhost:8080/h2-console
+HTTP 404 (consola H2 apagada en contenedores)
+
+$ docker compose exec <servicio> id
+backend   uid=10001(app) gid=10001(app) groups=10001(app)
+frontend  uid=101(nginx) gid=101(nginx) groups=101(nginx)
+database  uid=70(postgres) gid=70(postgres) groups=70(postgres)
+
+$ docker compose exec backend touch /app/x
+touch: cannot touch '/app/x': Read-only file system
+$ docker compose exec backend sh -c "command -v curl || echo sin curl"
+sin curl
+
+$ docker compose stop backend   (tiempo y log de apagado)
+real 0.22
+"message":"Graceful shutdown complete"

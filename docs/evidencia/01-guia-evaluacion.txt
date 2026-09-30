@@ -1,0 +1,94 @@
+# Commit afd4b5f, Colima (Docker 29, arm64, 4 CPU), 2026-09-30
+
+## Secuencia de GUIA_EVALUACION.md, sin .env
+
+sin .env (como en la guia)
+
+$ git ls-files | grep -E "(^|/)(\.env|id_rsa|.*\.pem)$" && echo "REVISAR POSIBLE SECRETO" || true
+(sin resultados)
+
+$ ./scripts/verify-docker.sh   (verify.sh en contenedores; detalle en 02-verify-docker.txt)
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+                      | Initial total | 766.17 kB |               159.75 kB
+VALIDACIÓN CORRECTA (Docker): backend y frontend compilan; las pruebas finalizaron correctamente.
+[exit=0]
+
+$ docker compose config --quiet
+OK, sin errores [exit=0]
+
+$ docker compose build --no-cache
+ Image neology/parking-backend:local Built
+ Image neology/parking-frontend:local Built
+[exit=0]
+
+$ docker compose up --detach
+ Network devops-prueba-tecnica-neology_data Creating
+ Network devops-prueba-tecnica-neology_edge Creating
+ Volume devops-prueba-tecnica-neology_postgres_data Creating
+ Volume devops-prueba-tecnica-neology_postgres_data Creating
+ Network devops-prueba-tecnica-neology_edge Creating
+ Network devops-prueba-tecnica-neology_data Creating
+ Volume devops-prueba-tecnica-neology_postgres_data Created
+ Volume devops-prueba-tecnica-neology_postgres_data Created
+ Network devops-prueba-tecnica-neology_edge Created
+ Network devops-prueba-tecnica-neology_edge Created
+ Network devops-prueba-tecnica-neology_data Created
+ Network devops-prueba-tecnica-neology_data Created
+ Container devops-prueba-tecnica-neology-database-1 Creating
+ Container devops-prueba-tecnica-neology-database-1 Created
+ Container devops-prueba-tecnica-neology-backend-1 Creating
+ Container devops-prueba-tecnica-neology-backend-1 Created
+ Container devops-prueba-tecnica-neology-frontend-1 Creating
+ Container devops-prueba-tecnica-neology-frontend-1 Created
+ Container devops-prueba-tecnica-neology-database-1 Starting
+ Container devops-prueba-tecnica-neology-database-1 Started
+ Container devops-prueba-tecnica-neology-database-1 Waiting
+ Container devops-prueba-tecnica-neology-database-1 Healthy
+ Container devops-prueba-tecnica-neology-backend-1 Starting
+ Container devops-prueba-tecnica-neology-backend-1 Started
+ Container devops-prueba-tecnica-neology-backend-1 Waiting
+ Container devops-prueba-tecnica-neology-backend-1 Healthy
+ Container devops-prueba-tecnica-neology-frontend-1 Starting
+ Container devops-prueba-tecnica-neology-frontend-1 Started
+[exit=0]
+
+$ docker compose ps
+NAME                                       IMAGE                                                                                               COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+devops-prueba-tecnica-neology-backend-1    neology/parking-backend:local                                                                       "java org.springfram…"   backend    17 seconds ago   Up 11 seconds (healthy)   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+devops-prueba-tecnica-neology-database-1   postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea   "docker-entrypoint.s…"   database   17 seconds ago   Up 17 seconds (healthy)   5432/tcp
+devops-prueba-tecnica-neology-frontend-1   neology/parking-frontend:local                                                                      "/docker-entrypoint.…"   frontend   17 seconds ago   Up 6 seconds (healthy)    0.0.0.0:4200->8080/tcp, [::]:4200->8080/tcp
+[exit=0]
+
+$ ./scripts/smoke-test.sh
+[1/6] Verificando salud del backend...
+[2/6] Registrando residente DEV-20502694...
+[3/6] Registrando entrada...
+[4/6] Registrando salida...
+[5/6] Verificando reporte de residentes...
+[6/6] Verificando frontend cuando está disponible...
+Frontend disponible.
+SMOKE TEST CORRECTO para la placa DEV-20502694.
+[exit=0]
+
+$ docker compose logs --tail=150 backend frontend database   (extracto en 03-logs-extracto.txt)
+lineas con level WARN o ERROR: 0
+
+$ docker compose down
+ Container devops-prueba-tecnica-neology-frontend-1 Stopping
+ Container devops-prueba-tecnica-neology-frontend-1 Stopped
+ Container devops-prueba-tecnica-neology-frontend-1 Removing
+ Container devops-prueba-tecnica-neology-frontend-1 Removed
+ Container devops-prueba-tecnica-neology-backend-1 Stopping
+ Container devops-prueba-tecnica-neology-backend-1 Stopped
+ Container devops-prueba-tecnica-neology-backend-1 Removing
+ Container devops-prueba-tecnica-neology-backend-1 Removed
+ Container devops-prueba-tecnica-neology-database-1 Stopping
+ Container devops-prueba-tecnica-neology-database-1 Stopped
+ Container devops-prueba-tecnica-neology-database-1 Removing
+ Container devops-prueba-tecnica-neology-database-1 Removed
+ Network devops-prueba-tecnica-neology_edge Removing
+ Network devops-prueba-tecnica-neology_data Removing
+ Network devops-prueba-tecnica-neology_edge Removed
+ Network devops-prueba-tecnica-neology_data Removed
+[exit=0]

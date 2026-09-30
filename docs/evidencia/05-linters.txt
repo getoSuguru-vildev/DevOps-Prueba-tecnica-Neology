@@ -1,0 +1,24 @@
+# Commit afd4b5f, Colima (Docker 29, arm64, 4 CPU), 2026-09-30
+
+$ hadolint backend/Dockerfile
+sin hallazgos
+$ hadolint frontend/Dockerfile
+sin hallazgos
+
+$ shellcheck scripts/*.sh infra/scripts/*.sh
+sin hallazgos
+
+$ actionlint
+sin hallazgos
+
+$ promtool check config observability/prometheus/prometheus.yml
+Checking /etc/prometheus/prometheus.yml
+  SUCCESS: 1 rule files found
+ SUCCESS: /etc/prometheus/prometheus.yml is valid prometheus config file syntax
+
+Checking /etc/prometheus/rules/parking-api.yml
+  SUCCESS: 15 rules found
+
+
+$ promtool test rules observability/prometheus/tests/parking-api.test.yml
+  SUCCESS

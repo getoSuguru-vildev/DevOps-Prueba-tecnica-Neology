@@ -1,0 +1,30 @@
+# Commit afd4b5f, Colima (Docker 29, arm64, 4 CPU), 2026-09-30
+
+$ docker compose logs --tail=150 backend frontend database   (extracto)
+
+backend-1   | Picked up JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -Djava.io.tmpdir=/tmp
+backend-1   | 02:50:14,976 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.5.11
+backend-1   | 02:50:14,977 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 - Here is a list of configurators discovered as a service, by rank: 
+backend-1   | 02:50:14,977 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 -   org.springframework.boot.logging.logback.RootLogLevelConfigurator
+backend-1   | 02:50:14,977 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 - They will be invoked in order until ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY is returned.
+backend-1   | 02:50:14,977 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 - Constructed configurator of type class org.springframework.boot.logging.logback.RootLogLevelConfigurator
+backend-1   | 02:50:14,982 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 - org.springframework.boot.logging.logback.RootLogLevelConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+backend-1   | 02:50:14,982 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 - Trying to configure with ch.qos.logback.classic.joran.SerializedModelConfigurator
+backend-1   | 02:50:14,982 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 - Constructed configurator of type class ch.qos.logback.classic.joran.SerializedModelConfigurator
+backend-1   | 02:50:14,983 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.scmo]
+backend-1   | 02:50:15,032 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.scmo]
+backend-1   | 02:50:15,032 |-INFO in ch.qos.logback.classic.util.ContextInitializer@352c308 - ch.qos.logback.classic.joran.SerializedModelConfigurator.configure() call lasted 50 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+...
+frontend-1  | 2026/09/30 02:50:20 [notice] 1#1: start worker processes
+frontend-1  | 2026/09/30 02:50:20 [notice] 1#1: start worker process 27
+frontend-1  | 2026/09/30 02:50:20 [notice] 1#1: start worker process 28
+frontend-1  | 2026/09/30 02:50:20 [notice] 1#1: start worker process 29
+frontend-1  | 2026/09/30 02:50:20 [notice] 1#1: start worker process 30
+frontend-1  | {"time":"2026-09-30T02:50:27+00:00","request_id":"4ecb9465565e336c7f3beccde56de758","remote_addr":"172.18.0.1","method":"GET","uri":"/","status":200,"bytes_sent":47316,"request_time":0.000,"upstream_status":"","upstream_response_time":"","user_agent":"curl/8.7.1"}
+...
+database-1  | 2026-09-30 02:50:09.878 UTC [1] LOG:  starting PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+database-1  | 2026-09-30 02:50:09.878 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+database-1  | 2026-09-30 02:50:09.878 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+database-1  | 2026-09-30 02:50:09.879 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+database-1  | 2026-09-30 02:50:09.880 UTC [44] LOG:  database system was shut down at 2026-09-30 02:50:09 UTC
+database-1  | 2026-09-30 02:50:09.882 UTC [1] LOG:  database system is ready to accept connections
