@@ -1,0 +1,7 @@
+# Bucket con versionado, cifrado y bloqueo de acceso público, en la cuenta de administración.
+# Cada ambiente usa su propia llave, así un apply de dev no puede tocar el estado de prod.
+bucket       = "neology-parking-tfstate"
+key          = "parking/dev/terraform.tfstate"
+region       = "us-east-1"
+encrypt      = true
+use_lockfile = true

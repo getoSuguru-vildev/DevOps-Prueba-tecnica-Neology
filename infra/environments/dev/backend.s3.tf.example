@@ -1,0 +1,10 @@
+# Estado remoto en S3, cifrado y con lock nativo de S3 (use_lockfile, Terraform >= 1.10, ya no hace falta DynamoDB).
+# Para desplegar de verdad:
+#   cp backend.s3.tf.example backend.tf
+#   cp backend.hcl.example backend.hcl   (ajustar bucket)
+#   terraform init -backend-config=backend.hcl
+# Se deja como .example para que "init -backend=false + validate + plan" funcione sin cuenta de AWS
+# (con un backend declarado, plan exige inicializarlo).
+terraform {
+  backend "s3" {}
+}
