@@ -3,7 +3,8 @@ set -euo pipefail
 
 api_url="${API_URL:-http://localhost:8080}"
 frontend_url="${FRONTEND_URL:-http://localhost:4200}"
-unique_suffix="$(date +%H%M%S)"
+# Dos dígitos al azar para que dos corridas en el mismo segundo no choquen (placa de 12 caracteres máximo).
+unique_suffix="$(date +%H%M%S)$(printf '%02d' $((RANDOM % 100)))"
 plate="DEV-${unique_suffix}"
 
 post_json() {
