@@ -1,0 +1,5 @@
+# Solo pom.xml y src/ forman parte del contexto de construcción.
+*
+!pom.xml
+!src/
+src/test/
