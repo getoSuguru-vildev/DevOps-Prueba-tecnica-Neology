@@ -24,6 +24,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .allowedHeaders("*")
+                .exposedHeaders(CorrelationIdFilter.HEADER)
                 .maxAge(3600);
     }
 }
